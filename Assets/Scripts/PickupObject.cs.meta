@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: 56519c10aca0e4e48bb30fb578c436eb
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - playerCamera: {instanceID: 0}
+  - telecomande_bouton: {instanceID: 0}
+  - telecomande_Led: {instanceID: 0}
+  - World_Light: {instanceID: 0}
+  - wrist: {instanceID: 0}
+  - pickupUI: {fileID: 2258507094557093464, guid: e79ec584aa2474345ad0e49e3180fa15, type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
