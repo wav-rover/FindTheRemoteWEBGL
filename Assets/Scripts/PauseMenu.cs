@@ -36,9 +36,9 @@ public class PauseMenu : MonoBehaviour
 
     public void Resume()
     {
-        Time.timeScale = 1;
         isPaused = false;
         pauseMenu.SetActive(false);
+        Time.timeScale = 1;
         cameraController.enabled = true;
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
@@ -46,6 +46,7 @@ public class PauseMenu : MonoBehaviour
 
     public void BackToMainMenu()
     {
+        // Remet le temps en route avant de changer de scène
         Time.timeScale = 1;
         SceneManager.LoadScene("MainMenu");
         isPaused = false;

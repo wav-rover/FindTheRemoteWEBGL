@@ -5,6 +5,12 @@ using UnityEngine.InputSystem;
 
 public class PlayerControls : MonoBehaviour
 {
+    // Variables de chute et ragdoll
+    private float lastGroundedY;
+    private float currentFallDistance;
+    private bool isRagdollActive = false;
+    public float ragdollFallThreshold = 0.1f; // Seuil de chute pour activer le ragdoll
+
     Vector3 MoveDir;
     private Vector2 inputVector;
     public CharacterController characterController;
@@ -29,6 +35,9 @@ public class PlayerControls : MonoBehaviour
     public float distanceMaxRamassage = 3f;
     private GameObject objetEnMain;
 
+    // Variables pour le ragdoll
+    private Vector3 lastMoveDirection; // Direction de mouvement précédente
+    private float lastPlayerSpeed; // Vitesse précédente
 
     // Start is called before the first frame update
     void Start()
@@ -39,7 +48,7 @@ public class PlayerControls : MonoBehaviour
 
     public void OnGrab(InputAction.CallbackContext ctxt)
     {
-        if(ctxt.performed)
+        if (ctxt.performed)
         {
             if (objetEnMain != null)
             {
@@ -49,6 +58,18 @@ public class PlayerControls : MonoBehaviour
             {
                 RamasserObjet();
             }
+        }
+    }
+
+    public void OnActivateRagdoll(InputAction.CallbackContext ctxt) // New Method for Ragdoll Activation
+    {
+        if (ctxt.performed && !isRagdollActive) // Ensure ragdoll is not already active
+        {
+            ActivateRagdoll();
+        }
+        else if (ctxt.canceled && isRagdollActive) // Deactivate ragdoll when released
+        {
+            DeactivateRagdoll();
         }
     }
 
@@ -150,7 +171,8 @@ public class PlayerControls : MonoBehaviour
 
     public void OnPickup(InputAction.CallbackContext ctxt)
     {
-        if(ctxt.performed) {
+        if (ctxt.performed)
+        {
             if (!isPickedUp)
             {
                 Pickup();
@@ -166,7 +188,7 @@ public class PlayerControls : MonoBehaviour
             }
         }
     }
-    
+
     void Pickup()
     {
         animator.SetBool("TelecommandePush", false);
@@ -182,12 +204,12 @@ public class PlayerControls : MonoBehaviour
             }
         }
     }
-    
+
     void MovePickedUpObject()
     {
         pickedUpObject.position = Vector3.Lerp(pickedUpObject.position, playerCamera.transform.position + playerCamera.transform.forward * pickupRange, pickupSpeed * Time.deltaTime);
     }
-    
+
     void Drop()
     {
         pickedUpObject.GetComponent<Rigidbody>().useGravity = true;
@@ -195,16 +217,20 @@ public class PlayerControls : MonoBehaviour
         pickedUpObject = null;
     }
 
-    public void OnMove(InputAction.CallbackContext ctxt) {
+    public void OnMove(InputAction.CallbackContext ctxt)
+    {
         inputVector = ctxt.ReadValue<Vector2>();
     }
 
-    public void OnSprint(InputAction.CallbackContext ctxt) {
-        if(ctxt.performed) {
+    public void OnSprint(InputAction.CallbackContext ctxt)
+    {
+        if (ctxt.performed)
+        {
             PlayerSpeed = PlayerSpeed * 2;
             animator.SetBool("isSprint", true);
         }
-        if(ctxt.canceled) {
+        if (ctxt.canceled)
+        {
             PlayerSpeed = 5;
             animator.SetBool("isSprint", false);
         }
@@ -212,8 +238,9 @@ public class PlayerControls : MonoBehaviour
 
     // Update is called once per frame
     void Update()
-    {       
-        if(characterController.isGrounded){
+    {
+        if (characterController.isGrounded)
+        {
             // Saut
             if (Input.GetButtonDown("Jump")) // Ne permet pas de sauter quand accroupi
             {
@@ -221,83 +248,79 @@ public class PlayerControls : MonoBehaviour
                 isJumping = true; // Le joueur est en train de sauter
                 animator.SetBool("isJumping", true);
             }
-        } else {
+        }
+        else
+        {
             // Le joueur n'est pas au sol, il ne peut pas être en train de sauter
             isJumping = false;
             animator.SetBool("isJumping", false);
         }
 
-        // affichage de l'ui de ramassage
-        RaycastHit hit;
-        if (Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward, out hit, pickupRange))
-        {
-            if (hit.collider.CompareTag("Ramassable") || hit.collider.CompareTag("RedKeyCrystal") || hit.collider.CompareTag("GreenKeyCrystal") || hit.collider.CompareTag("BlueKeyCrystal") || hit.collider.CompareTag("Telecommande") || hit.collider.CompareTag("Radio"))
-            {
-                if (!isPickedUp && objetEnMain==null)
-                {
-                    pickupUI.SetActive(true);
-                }
-            }
-            else
-            {
-                pickupUI.SetActive(false);
-            }
-        }
-        else
-        {
-            pickupUI.SetActive(false);
-        }
-
-        if(isPickedUp)
-        {
-            MovePickedUpObject();
-        }
-
-        if (Input.GetMouseButtonDown(1) && objetEnMain != null)
-        {   
-            animator.SetBool("isThrowing", true);
-            StartCoroutine(LancerObjetAprèsAnimation());
-        }
-        else
-        {
-            animator.SetBool("isThrowing", false);
-        }
-
-        if (Input.GetMouseButtonDown(0) && objetEnMain != null && objetEnMain.CompareTag("Telecommande"))
-        {
-            animator.SetBool("TelecommandePush", true);
-            StartCoroutine(AnimateButton());
-
-            // Si l'objet ramassé est la télécommande et que le bouton gauche de la souris est cliqué, active les animations et le passage du portail
-            ClickableObject clickableObject = objetEnMain.GetComponent<ClickableObject>();
-            if (clickableObject != null)
-            {
-                clickableObject.OnMouseDown();
-            } 
-        }
-        else 
-        {
-            animator.SetBool("TelecommandePush", false);
-        }
+        // Stockez la direction et la vitesse avant d'activer le ragdoll
+        lastMoveDirection = MoveDir.normalized; // Conservez la direction de mouvement
+        lastPlayerSpeed = PlayerSpeed; // Conservez la vitesse du joueur
 
         // Appliquer la gravité
         PlayerVelocity.y -= Gravity * Time.deltaTime;
-    
+
         Vector3 NewMoveDir = new Vector3(inputVector.x, 0, inputVector.y); // Ajoute PlayerVelocity.y à MoveDir
         NewMoveDir = Camera.main.transform.TransformDirection(NewMoveDir);
         NewMoveDir.y = 0;
         NewMoveDir.Normalize();
         MoveDir.x = NewMoveDir.x;
         MoveDir.z = NewMoveDir.z;
-    
+
         animator.SetBool("isWalking", inputVector.y > 0);
         animator.SetBool("Backward", inputVector.y < 0);
         animator.SetBool("StrafeLeft", inputVector.x < 0);
         animator.SetBool("StrafeRight", inputVector.x > 0);
-    
-        characterController.Move(MoveDir * PlayerSpeed*Time.deltaTime);
-    
+
+        characterController.Move(MoveDir * PlayerSpeed * Time.deltaTime);
+
         // Déplacer le joueur en fonction de la gravité et de la force de saut
         characterController.Move(PlayerVelocity * Time.deltaTime);
+    }
+
+    void ActivateRagdoll()
+    {
+        Debug.Log("Activation du Ragdoll");
+        isRagdollActive = true;
+
+        if (animator != null)
+        {
+            animator.enabled = false;  // Désactiver l'animation
+        }
+
+        if (characterController != null)
+        {
+            characterController.enabled = false;
+        }
+
+        Rigidbody[] rigidbodies = GetComponentsInChildren<Rigidbody>();
+        foreach (Rigidbody rb in rigidbodies)
+        {
+            rb.isKinematic = false; // Activez la physique pour les objets ragdoll
+            // Appliquer la vitesse au ragdoll
+            rb.velocity = lastMoveDirection * lastPlayerSpeed; // Appliquez la direction et la vitesse
+        }
+    }
+
+    void DeactivateRagdoll()
+    {
+        Debug.Log("Désactivation du Ragdoll");
+        isRagdollActive = false;
+
+        // Réactivez les animations et le CharacterController ici si nécessaire
+        if (animator != null)
+        {
+            animator.enabled = true; // Réactiver l'animation
+        }
+
+        if (characterController != null)
+        {
+            characterController.enabled = true; // Réactiver le CharacterController
+        }
+
+        // Réinitialisez la position du joueur ici si nécessaire
     }
 }

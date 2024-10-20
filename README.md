@@ -2,7 +2,7 @@
 
 Cette version est un portage WebGL réoptimisé par moi-même.
 
-- **Jouez au jeu ici** : [GameJolt - FindTheRemote](https://gamejolt.net/?token=8dND9bScyXkAX576XVr8Xk6UHyiQ6j)
+- **Jouez au jeu ici** : [GameJolt - FindTheRemote](https://gamejolt.com/games/findtheremote/932313)
 - **Lien vers le dépôt original contenant le code source et le build** : [GitHub - FindTheRemote](https://github.com/WeJustDev/FindTheRemote)
 
 ## Description
